@@ -1,4 +1,4 @@
-# fraud-detection AI: Система выявления мошшенеческих транзакций
+# fraud-detection AI: Система выявления мошеннических транзакций
 **Разработано командой: V - UP**
 
 ---
@@ -6,7 +6,7 @@
 
 В последние годы доля онлайн-мошенничества значительно выросла.
 Злоумышленники используют социальную инженерию, фишинг и
-поддельные сервисы для получения доступа к средствам клиентов. 
+поддельные сервисы для получения доступа к средствам клиентов.
 Традиционные антифрод-системы не всегда успевают адаптироваться
 под новые схемы, особенно когда речь идёт о небольших, но частых
 переводах через мобильный интернет-банкинг.
@@ -38,16 +38,147 @@
 
 ## Технический стек
 
-* **Python 3.14.0**
+* **Python 3.13+**
 * **FastAPI** (Backend & API)
 * **XGBoost / CatBoost** (ML Model)
 * **SHAP** (Интерпретация решений)
 * **Docker** (Контейризация)
 
-## Быстрый старт
+---
 
-Инструкция по запуску проекта:
-1. **Клонируйте репрозиторий:**
+## Установка и настройка
+
+### 1. Клонирование репозитория
+
 ```bash
-git clone [https://github.com/AI-fHack/fraud-detection.git](https://github.com/AI-fHack/fraud-detection.git)
+git clone https://github.com/AI-fHack/fraud-detection.git
+cd fraud-detection
+```
+
+### 2. Создание виртуального окружения
+
+Виртуальное окружение уже создано в папке `venv/`. Если нужно создать заново:
+
+```bash
+python -m venv venv
+```
+
+### 3. Активация виртуального окружения
+
+**PowerShell:**
+```powershell
+.\activate.ps1
+# или
+.\venv\Scripts\Activate.ps1
+```
+
+**CMD:**
+```cmd
+activate.bat
+# или
+venv\Scripts\activate.bat
+```
+
+После активации вы увидите `(venv)` в начале командной строки.
+
+### 4. Установка зависимостей
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## Запуск приложения
+
+### Вариант 1: Используя скрипт run.py
+```bash
+python run.py
+```
+
+### Вариант 2: Используя uvicorn напрямую
+```bash
+uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Вариант 3: Используя Docker
+```bash
 docker-compose up --build
+```
+
+После запуска API будет доступен по адресу:
+- **API**: http://localhost:8000
+- **Интерактивная документация**: http://localhost:8000/docs
+- **Альтернативная документация**: http://localhost:8000/redoc
+
+---
+
+## API Endpoints
+
+### Health Check
+- `GET /` - Информация об API
+- `GET /health` - Проверка работоспособности сервиса
+- `GET /model/status` - Статус модели (загружена/не загружена)
+
+### Предсказание мошенничества
+- `POST /predict` - Предсказать, является ли транзакция мошеннической
+
+**Пример запроса:**
+```json
+{
+  "amount": 1000.0,
+  "client_id": 2937833270,
+  "device_type": "mobile",
+  "phone_model": "iPhone16",
+  "os_version": "iOS/18.5"
+}
+```
+
+**Пример ответа:**
+```json
+{
+  "fraud_probability": 0.23,
+  "is_fraud": false,
+  "status": "legitimate",
+  "confidence": "high"
+}
+```
+
+---
+
+## Структура проекта
+
+```
+fraud-detection/
+├── src/
+│   ├── api/
+│   │   ├── main.py          # FastAPI приложение
+│   │   ├── models.py        # Pydantic модели
+│   │   └── predict.py       # Загрузка модели
+│   └── ml/
+│       ├── model.pkl        # Обученная модель
+│       └── preprocess.py    # Предобработка данных
+├── data/                    # Данные
+│   ├── transactions.csv      # Транзакции
+│   └── behavior_patterns.csv # Поведенческие паттерны
+├── notebooks/               # Jupyter notebooks
+├── requirements.txt         # Зависимости Python
+└── run.py                  # Скрипт запуска
+```
+
+---
+
+## Деактивация виртуального окружения
+
+```bash
+deactivate
+```
+
+---
+
+## Разработка
+
+Проект разрабатывается командой в рамках хакатона. Каждый участник работает в своем бранче:
+- `api-integration` - Backend/Integration
+- `data-analysis` - Data Engineering
+- `develop` - Основная ветка разработки
