@@ -34,12 +34,15 @@ import joblib
 # Gradient Boosting
 import xgboost as xgb
 import lightgbm as lgb
+# CatBoost опционален - если установлен, будет автоматически использован
+# Если не установлен (требует Visual Studio), код продолжит работу без него
 try:
     import catboost as cb
     CATBOOST_AVAILABLE = True
 except ImportError:
     CATBOOST_AVAILABLE = False
     print("WARNING: CatBoost not installed (requires Visual Studio). Continuing without it.")
+    print("NOTE: If CatBoost is installed later, it will be automatically used without code changes.")
 
 # Оптимизация
 import optuna
@@ -279,6 +282,8 @@ y_pred_proba_lgb = lgb_model.predict_proba(X_test)[:, 1]
 print("✅ LightGBM обучен!")
 
 # Задача 44: CatBoost
+# Автоматически обучится, если библиотека установлена
+# Никаких изменений кода не требуется при установке CatBoost
 if CATBOOST_AVAILABLE:
     print("\n--- Обучение CatBoost ---")
     cb_model = cb.CatBoostClassifier(
@@ -295,6 +300,8 @@ if CATBOOST_AVAILABLE:
     print("✅ CatBoost обучен!")
 else:
     print("\n--- CatBoost пропущен (не установлен) ---")
+    print("   Примечание: После установки CatBoost (требует Visual Studio)")
+    print("   код автоматически обучит CatBoost без изменений.")
     y_pred_cb = None
     y_pred_proba_cb = None
 
