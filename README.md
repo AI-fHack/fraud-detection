@@ -51,3 +51,4 @@
 ```bash
 git clone [https://github.com/AI-fHack/fraud-detection.git](https://github.com/AI-fHack/fraud-detection.git)
 docker-compose up --build
+    
