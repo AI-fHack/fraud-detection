@@ -63,7 +63,7 @@ print("\n" + "="*80)
 print("ЗАГРУЗКА ДАННЫХ")
 print("="*80)
 
-DATA_PATH = 'data/processed/transactions_with_features.csv'
+DATA_PATH = 'data/processed/transactions_with_features_final.csv'
 
 df = pd.read_csv(DATA_PATH)
 print(f"✅ Данные загружены: {df.shape}")

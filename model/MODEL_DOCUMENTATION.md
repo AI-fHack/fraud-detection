@@ -3,42 +3,42 @@
 ## Модель
 - **Тип:** LightGBM
 - **Версия:** 1.0
-- **Дата создания:** 2025-11-24 09:25:20
+- **Дата создания:** 2025-11-24 10:39:11
 
 ## Метрики производительности
-- **F2-score:** 0.6358
-- **Recall:** 0.6667
-- **Precision:** 0.5366
-- **F1-score:** 0.5946
-- **ROC-AUC:** 0.9788
+- **F2-score:** 0.5917
+- **Recall:** 0.6061
+- **Precision:** 0.5405
+- **F1-score:** 0.5714
+- **ROC-AUC:** 0.9765
 
 ## Оптимальный порог классификации
 - **Threshold:** 0.550
 
 ## Входные данные (Input)
-Модель принимает на вход DataFrame со следующими признаками (82 признаков):
+Модель принимает на вход DataFrame со следующими признаками (83 признаков):
 
 - time_until_next_tx
-- user_tx_count_total
 - user_min_amount_total
-- time_since_last_tx
+- user_tx_count_total
 - amount
-- user_id
-- day_of_month
+- time_since_last_tx
 - user_max_amount_total
-- month_cos
-- amount_zscore_user
 - amount_diff_from_user_avg
-- amount_ratio_to_user_avg
+- day_of_month
+- amount_zscore_user
 - user_avg_amount_total
-- month_sin
-- hour_sin
+- month_cos
+- amount_ratio_to_user_avg
 - user_std_amount_total
+- month_sin
 - day_of_week
+- hour_cos
+- month
+- tx_mean_amount_24h
 - hour
 - tx_mean_amount_1h
-- month
-... и еще 62 признаков
+... и еще 63 признаков
 
 **Требования:**
 - Все признаки должны быть числовыми
