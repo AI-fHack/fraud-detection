@@ -40,7 +40,7 @@
 
 * **Python 3.14.0**
 * **FastAPI** (Backend & API)
-* **XGBoost / CatBoost** (ML Model)
+* **LightGBM** (ML Model)
 * **SHAP** (Интерпретация решений)
 * **Docker** (Контейризация)
 
