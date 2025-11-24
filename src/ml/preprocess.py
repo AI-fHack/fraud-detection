@@ -2,8 +2,28 @@
 Модуль предобработки данных для ML модели.
 Преобразует данные транзакции в вектор признаков для модели.
 """
-from typing import List, Optional
+from typing import List
 import numpy as np
+from datetime import datetime
+from pathlib import Path
+
+
+def load_feature_names() -> List[str]:
+    """Загружает список финальных фичей из файла."""
+    project_root = Path(__file__).parent.parent.parent
+    features_file = project_root / "model" / "final_features_list.txt"
+    
+    if not features_file.exists():
+        return []
+    
+    features = []
+    with open(features_file, 'r', encoding='utf-8') as f:
+        for line in f.readlines()[4:]:
+            if line.strip().startswith('-'):
+                feature_name = line.strip()[2:].strip()
+                features.append(feature_name)
+    
+    return features
 
 
 def preprocess(data) -> List[float]:
@@ -14,141 +34,88 @@ def preprocess(data) -> List[float]:
         data: Transaction object with transaction details
         
     Returns:
-        list: Feature vector for the model
-        
-    Note:
-        Эта функция будет обновлена после того, как ML-инженер
-        предоставит требования к фичам модели.
+        list: Feature vector with 83 features in the correct order
     """
-    features = []
+    selected_features = load_feature_names()
     
-    # 1. Основные признаки транзакции
-    features.append(float(data.amount))
-    features.append(float(data.user_id))
+    if not selected_features:
+        selected_features = [
+            'time_until_next_tx', 'user_min_amount_total', 'user_tx_count_total',
+            'amount', 'time_since_last_tx', 'user_max_amount_total',
+            'amount_diff_from_user_avg', 'day_of_month', 'amount_zscore_user',
+            'user_avg_amount_total', 'month_cos', 'amount_ratio_to_user_avg',
+            'user_std_amount_total', 'month_sin', 'day_of_week', 'hour_cos',
+            'month', 'tx_mean_amount_24h', 'hour', 'tx_mean_amount_1h'
+        ]
     
-    # 2. Признаки даты/времени (если доступны)
-    # Можно извлечь: день недели, час, день месяца и т.д.
+    features_dict = {}
+    
+    features_dict['amount'] = float(data.amount)
+    features_dict['user_id'] = float(data.user_id)
+    
+    hour = 12.0
+    day_of_week = 0.0
+    day_of_month = 1.0
+    month = 6.0
+    
     if data.transaction_datetime:
-        # Заглушка: можно парсить дату и извлекать фичи
-        # features.append(extract_hour(data.transaction_datetime))
-        # features.append(extract_day_of_week(data.transaction_datetime))
-        pass
+        try:
+            dt_str = data.transaction_datetime.split()[0]
+            dt = datetime.strptime(dt_str, '%Y-%m-%d')
+            if len(data.transaction_datetime.split()) > 1:
+                time_part = data.transaction_datetime.split()[1]
+                hour = float(time_part.split(':')[0])
+            day_of_week = float(dt.weekday())
+            day_of_month = float(dt.day)
+            month = float(dt.month)
+        except:
+            pass
     
-    # 3. Поведенческие признаки устройства
-    if data.device_type:
-        # Кодирование типа устройства (one-hot или label encoding)
-        device_encoding = encode_device_type(data.device_type)
-        features.extend(device_encoding)
-    else:
-        # Если не указано, используем значения по умолчанию
-        features.extend([0.0, 0.0, 0.0])  # Заглушка для 3 типов устройств
+    features_dict['hour'] = hour
+    features_dict['day_of_week'] = day_of_week
+    features_dict['day_of_month'] = day_of_month
+    features_dict['month'] = month
+    features_dict['is_weekend'] = 1.0 if day_of_week >= 5 else 0.0
+    features_dict['is_night'] = 1.0 if 22 <= hour <= 23 or 0 <= hour <= 6 else 0.0
+    features_dict['hour_sin'] = np.sin(2 * np.pi * hour / 24)
+    features_dict['hour_cos'] = np.cos(2 * np.pi * hour / 24)
+    features_dict['day_of_week_sin'] = np.sin(2 * np.pi * day_of_week / 7)
+    features_dict['day_of_week_cos'] = np.cos(2 * np.pi * day_of_week / 7)
+    features_dict['month_sin'] = np.sin(2 * np.pi * month / 12)
+    features_dict['month_cos'] = np.cos(2 * np.pi * month / 12)
     
-    # 4. Признаки модели телефона и ОС
+    features_dict['количество_разных_версий_ос__os_ver__за_последние_30_дней_до_transdate___сколько_разных_ос_версий_использовал_клиент'] = float(data.unique_os_versions_30d) if data.unique_os_versions_30d is not None else 0.0
+    features_dict['количество_разных_моделей_телефона__phone_model__за_последние_30_дней___насколько_часто_клиент__менял_устройство__по_логам'] = float(data.unique_phone_models_30d) if data.unique_phone_models_30d is not None else 0.0
+    features_dict['количество_уникальных_логин_сессий__минутных_тайм_слотов__за_последние_7_дней_до_transdate'] = float(data.logins_last_7_days) if data.logins_last_7_days is not None else 0.0
+    features_dict['количество_уникальных_логин_сессий_за_последние_30_дней_до_transdate'] = float(data.logins_last_30_days) if data.logins_last_30_days is not None else 0.0
+    features_dict['среднее_число_логинов_в_день_за_последние_7_дней__logins_last_7_days___7'] = float(data.avg_logins_per_day_7d) if data.avg_logins_per_day_7d is not None else 0.0
+    features_dict['среднее_число_логинов_в_день_за_последние_30_дней__logins_last_30_days___30'] = float(data.avg_logins_per_day_30d) if data.avg_logins_per_day_30d is not None else 0.0
+    
     if data.phone_model:
-        phone_model_hash = hash_device_model(data.phone_model)
-        features.append(phone_model_hash)
+        features_dict['модель_телефона_из_самой_последней_сессии__по_времени__перед_transdate_encoded'] = float(hash(data.phone_model) % 10000) / 10000.0
     else:
-        features.append(0.0)
+        features_dict['модель_телефона_из_самой_последней_сессии__по_времени__перед_transdate_encoded'] = 0.0
     
     if data.os_version:
-        os_hash = hash_os_version(data.os_version)
-        features.append(os_hash)
+        features_dict['версия_ос_из_самой_последней_сессии_перед_transdate_encoded'] = float(hash(data.os_version) % 10000) / 10000.0
     else:
-        features.append(0.0)
+        features_dict['версия_ос_из_самой_последней_сессии_перед_transdate_encoded'] = 0.0
     
-    # 5. Поведенческие метрики
-    features.append(float(data.unique_os_versions_30d) if data.unique_os_versions_30d is not None else 0.0)
-    features.append(float(data.unique_phone_models_30d) if data.unique_phone_models_30d is not None else 0.0)
-    features.append(float(data.logins_last_7_days) if data.logins_last_7_days is not None else 0.0)
-    features.append(float(data.logins_last_30_days) if data.logins_last_30_days is not None else 0.0)
-    features.append(float(data.avg_logins_per_day_7d) if data.avg_logins_per_day_7d is not None else 0.0)
-    features.append(float(data.avg_logins_per_day_30d) if data.avg_logins_per_day_30d is not None else 0.0)
-    
-    # 6. Дополнительные вычисляемые признаки
-    # Отношение логинов за 7 дней к 30 дням
-    if data.logins_last_30_days and data.logins_last_30_days > 0:
-        login_ratio = (data.logins_last_7_days or 0) / data.logins_last_30_days
-        features.append(float(login_ratio))
+    if data.destination:
+        features_dict['recipient_freq_encoding'] = float(hash(data.destination) % 10000) / 10000.0
     else:
-        features.append(0.0)
+        features_dict['recipient_freq_encoding'] = 0.0
     
-    # Нормализация суммы (можно использовать логарифм для больших сумм)
-    features.append(np.log1p(data.amount))  # log(1 + amount)
+    feature_vector = []
+    for feature_name in selected_features:
+        if feature_name in features_dict:
+            feature_vector.append(features_dict[feature_name])
+        else:
+            feature_vector.append(0.0)
     
-    # Признак частоты смены устройств
-    if data.unique_phone_models_30d and data.unique_phone_models_30d > 0:
-        device_change_freq = float(data.unique_phone_models_30d) / 30.0
-        features.append(device_change_freq)
-    else:
-        features.append(0.0)
+    if len(feature_vector) < 83:
+        feature_vector.extend([0.0] * (83 - len(feature_vector)))
+    elif len(feature_vector) > 83:
+        feature_vector = feature_vector[:83]
     
-    return features
-
-
-def encode_device_type(device_type: str) -> List[float]:
-    """
-    Кодирование типа устройства.
-    
-    Args:
-        device_type: Тип устройства (mobile, desktop, tablet)
-        
-    Returns:
-        List[float]: One-hot encoding или label encoding
-    """
-    device_mapping = {
-        'mobile': [1.0, 0.0, 0.0],
-        'desktop': [0.0, 1.0, 0.0],
-        'tablet': [0.0, 0.0, 1.0],
-    }
-    return device_mapping.get(device_type.lower(), [0.0, 0.0, 0.0])
-
-
-def hash_device_model(phone_model: str) -> float:
-    """
-    Хеширование модели телефона в числовое значение.
-    
-    Args:
-        phone_model: Модель телефона
-        
-    Returns:
-        float: Нормализованное хеш-значение
-    """
-    # Простое хеширование (можно улучшить)
-    hash_value = hash(phone_model) % 10000
-    return float(hash_value) / 10000.0  # Нормализация к [0, 1]
-
-
-def hash_os_version(os_version: str) -> float:
-    """
-    Хеширование версии ОС в числовое значение.
-    
-    Args:
-        os_version: Версия ОС
-        
-    Returns:
-        float: Нормализованное хеш-значение
-    """
-    # Простое хеширование (можно улучшить)
-    hash_value = hash(os_version) % 10000
-    return float(hash_value) / 10000.0  # Нормализация к [0, 1]
-
-
-def extract_hour(datetime_str: str) -> float:
-    """Извлечение часа из строки даты/времени."""
-    try:
-        # Парсинг формата '2025-01-05 16:32:02.000'
-        hour = int(datetime_str.split()[1].split(':')[0])
-        return float(hour) / 24.0  # Нормализация к [0, 1]
-    except:
-        return 0.0
-
-
-def extract_day_of_week(datetime_str: str) -> float:
-    """Извлечение дня недели из строки даты/времени."""
-    try:
-        from datetime import datetime
-        dt = datetime.strptime(datetime_str.split()[0], '%Y-%m-%d')
-        day_of_week = dt.weekday()  # 0 = Monday, 6 = Sunday
-        return float(day_of_week) / 7.0  # Нормализация к [0, 1]
-    except:
-        return 0.0
+    return feature_vector

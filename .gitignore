@@ -111,6 +111,10 @@ ENV/
 env.bak/
 venv.bak/
 
+# Virtual environment activation scripts
+activate.bat
+activate.ps1
+
 # Spyder project settings
 .spyderproject
 .spyproject

@@ -34,8 +34,7 @@ import joblib
 # Gradient Boosting
 import xgboost as xgb
 import lightgbm as lgb
-# CatBoost опционален - если установлен, будет автоматически использован
-# Если не установлен (требует Visual Studio), код продолжит работу без него
+
 try:
     import catboost as cb
     CATBOOST_AVAILABLE = True
@@ -54,30 +53,25 @@ import shap
 plt.style.use('seaborn-v0_8-darkgrid')
 sns.set_palette("husl")
 
-print("✅ Все библиотеки загружены успешно!")
+print(" Все библиотеки загружены успешно!")
 
-# ============================================================================
-# ЗАГРУЗКА ДАННЫХ
-# ============================================================================
-print("\n" + "="*80)
-print("ЗАГРУЗКА ДАННЫХ")
-print("="*80)
+
 
 DATA_PATH = 'data/processed/transactions_with_features_final.csv'
 
 df = pd.read_csv(DATA_PATH)
-print(f"✅ Данные загружены: {df.shape}")
+print(f" Данные загружены: {df.shape}")
 print(f"\nКолонки: {len(df.columns)}")
 print(f"Первые 5 колонок: {list(df.columns[:5])}")
 
 # Проверка целевой переменной
 if 'target' in df.columns:
-    print(f"\n📊 Распределение классов:")
+    print(f"\n Распределение классов:")
     print(df['target'].value_counts())
     imbalance_ratio = df['target'].value_counts()[0] / df['target'].value_counts()[1]
     print(f"\nДисбаланс: {imbalance_ratio:.2f}:1")
 else:
-    raise ValueError("❌ Колонка 'target' не найдена!")
+    raise ValueError(" Колонка 'target' не найдена!")
 
 # Разделение на признаки и целевую переменную
 X = df.drop(columns=['target'], errors='ignore')
@@ -95,15 +89,10 @@ if nan_count > 0:
     print(f"\n⚠️ Обнаружено {nan_count} NaN значений. Заполняем нулями.")
     X = X.fillna(0)
 
-print(f"\n✅ Финальный размер признаков: {X.shape}")
+print(f"\n Финальный размер признаков: {X.shape}")
 print(f"Количество признаков: {X.shape[1]}")
 
-# ============================================================================
-# ЗАДАЧА 37: TRAIN/TEST SPLIT (STRATIFIED)
-# ============================================================================
-print("\n" + "="*80)
-print("ЗАДАЧА 37: TRAIN/TEST SPLIT (STRATIFIED)")
-print("="*80)
+
 
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, 
@@ -112,7 +101,7 @@ X_train, X_test, y_train, y_test = train_test_split(
     stratify=y  # Сохраняем пропорции классов
 )
 
-print(f"✅ Train/Test Split выполнен:")
+print(f" Train/Test Split выполнен:")
 print(f"  Train: {X_train.shape[0]} samples ({X_train.shape[0]/len(X)*100:.1f}%)")
 print(f"  Test: {X_test.shape[0]} samples ({X_test.shape[0]/len(X)*100:.1f}%)")
 print(f"\nРаспределение классов в train:")
@@ -120,12 +109,7 @@ print(y_train.value_counts())
 print(f"\nРаспределение классов в test:")
 print(y_test.value_counts())
 
-# ============================================================================
-# ЗАДАЧА 38: BASELINE МОДЕЛЬ LOGISTIC REGRESSION
-# ============================================================================
-print("\n" + "="*80)
-print("ЗАДАЧА 38: BASELINE МОДЕЛЬ LOGISTIC REGRESSION")
-print("="*80)
+
 
 print("--- Обучение Baseline модели (Logistic Regression) ---")
 
@@ -147,14 +131,9 @@ baseline_model.fit(X_train_scaled, y_train)
 y_pred_baseline = baseline_model.predict(X_test_scaled)
 y_pred_proba_baseline = baseline_model.predict_proba(X_test_scaled)[:, 1]
 
-print("✅ Baseline модель обучена!")
+print(" Baseline модель обучена!")
 
-# ============================================================================
-# ЗАДАЧА 39: МЕТРИКИ PRECISION, RECALL, F2
-# ============================================================================
-print("\n" + "="*80)
-print("ЗАДАЧА 39: МЕТРИКИ PRECISION, RECALL, F2")
-print("="*80)
+
 
 def calculate_metrics(y_true, y_pred, y_pred_proba=None, model_name=""):
     """Вычисляет все необходимые метрики"""
@@ -182,19 +161,14 @@ baseline_metrics = calculate_metrics(
     y_test, y_pred_baseline, y_pred_proba_baseline, "Baseline (Logistic Regression)"
 )
 
-print("📊 МЕТРИКИ BASELINE МОДЕЛИ:")
+print(" МЕТРИКИ BASELINE МОДЕЛИ:")
 print("=" * 60)
 for key, value in baseline_metrics.items():
     if key != 'Model':
         print(f"{key:15s}: {value:.4f}")
 print("=" * 60)
 
-# ============================================================================
-# ЗАДАЧА 40: CONFUSION MATRIX
-# ============================================================================
-print("\n" + "="*80)
-print("ЗАДАЧА 40: CONFUSION MATRIX")
-print("="*80)
+
 
 # Создаем директорию для сохранения графиков
 os.makedirs('model', exist_ok=True)
@@ -224,14 +198,9 @@ plt.tight_layout()
 plt.savefig('model/baseline_metrics.png', dpi=300, bbox_inches='tight')
 plt.close()
 
-print("\n✅ Baseline модель готова! Метрики сохранены.")
+print("\n Baseline модель готова! Метрики сохранены.")
 
-# ============================================================================
-# ЗАДАЧИ 41-44: ОБУЧЕНИЕ МОДЕЛЕЙ
-# ============================================================================
-print("\n" + "="*80)
-print("ЗАДАЧИ 41-44: ОБУЧЕНИЕ МОДЕЛЕЙ")
-print("="*80)
+
 
 # Задача 41: RandomForest
 print("\n--- Обучение RandomForest ---")
@@ -265,7 +234,7 @@ y_pred_xgb = xgb_model.predict(X_test)
 y_pred_proba_xgb = xgb_model.predict_proba(X_test)[:, 1]
 print("✅ XGBoost обучен!")
 
-# Задача 43: LightGBM
+
 print("\n--- Обучение LightGBM ---")
 lgb_model = lgb.LGBMClassifier(
     n_estimators=100,
@@ -279,11 +248,9 @@ lgb_model = lgb.LGBMClassifier(
 lgb_model.fit(X_train, y_train)
 y_pred_lgb = lgb_model.predict(X_test)
 y_pred_proba_lgb = lgb_model.predict_proba(X_test)[:, 1]
-print("✅ LightGBM обучен!")
+print(" LightGBM обучен!")
 
-# Задача 44: CatBoost
-# Автоматически обучится, если библиотека установлена
-# Никаких изменений кода не требуется при установке CatBoost
+
 if CATBOOST_AVAILABLE:
     print("\n--- Обучение CatBoost ---")
     cb_model = cb.CatBoostClassifier(
@@ -297,7 +264,7 @@ if CATBOOST_AVAILABLE:
     cb_model.fit(X_train, y_train)
     y_pred_cb = cb_model.predict(X_test)
     y_pred_proba_cb = cb_model.predict_proba(X_test)[:, 1]
-    print("✅ CatBoost обучен!")
+    print(" CatBoost обучен!")
 else:
     print("\n--- CatBoost пропущен (не установлен) ---")
     print("   Примечание: После установки CatBoost (требует Visual Studio)")
@@ -305,12 +272,7 @@ else:
     y_pred_cb = None
     y_pred_proba_cb = None
 
-# ============================================================================
-# ЗАДАЧА 45: СРАВНЕНИЕ МОДЕЛЕЙ ПО МЕТРИКАМ
-# ============================================================================
-print("\n" + "="*80)
-print("ЗАДАЧА 45: СРАВНЕНИЕ МОДЕЛЕЙ ПО МЕТРИКАМ")
-print("="*80)
+
 
 all_models = {
     'Baseline (Logistic Regression)': (y_pred_baseline, y_pred_proba_baseline),
@@ -329,7 +291,7 @@ for name, (y_pred, y_pred_proba) in all_models.items():
 results_df = pd.DataFrame(results)
 results_df = results_df.sort_values('F2-score', ascending=False)
 
-print("📊 СРАВНЕНИЕ МОДЕЛЕЙ:")
+print(" СРАВНЕНИЕ МОДЕЛЕЙ:")
 print("=" * 80)
 print(results_df.to_string(index=False))
 print("=" * 80)
@@ -353,12 +315,7 @@ plt.tight_layout()
 plt.savefig('model/models_comparison.png', dpi=300, bbox_inches='tight')
 plt.close()
 
-# ============================================================================
-# ЗАДАЧА 46: ВЫБОР ЛУЧШЕЙ МОДЕЛИ
-# ============================================================================
-print("\n" + "="*80)
-print("ЗАДАЧА 46: ВЫБОР ЛУЧШЕЙ МОДЕЛИ")
-print("="*80)
+
 
 best_model_name = results_df.iloc[0]['Model']
 best_f2_score = results_df.iloc[0]['F2-score']
@@ -388,17 +345,11 @@ elif best_model_name == 'CatBoost' and CATBOOST_AVAILABLE:
     best_model = cb_model
     best_scaler = None
 
-print(f"\n✅ Лучшая модель выбрана: {best_model_name}")
+print(f"\n Лучшая модель выбрана: {best_model_name}")
 
-# ============================================================================
-# ЗАДАЧА 47: ПОДБОР ГИПЕРПАРАМЕТРОВ (OPTUNA)
-# ============================================================================
-print("\n" + "="*80)
-print("ЗАДАЧА 47: ПОДБОР ГИПЕРПАРАМЕТРОВ (OPTUNA)")
-print("="*80)
 
 print("--- Оптимизация гиперпараметров с Optuna ---")
-print("⚠️ Это может занять некоторое время...")
+print(" Это может занять некоторое время...")
 
 # Определяем, какую модель оптимизировать (берем лучшую из предыдущего шага)
 # Для примера оптимизируем LightGBM (обычно показывает хорошие результаты)
@@ -432,7 +383,7 @@ def objective(trial):
 study = optuna.create_study(direction='maximize')
 study.optimize(objective, n_trials=20, show_progress_bar=True)
 
-print(f"\n✅ Оптимизация завершена!")
+print(f"\n Оптимизация завершена!")
 print(f"Лучший F2-score (CV): {study.best_value:.4f}")
 print(f"Лучшие параметры:")
 for key, value in study.best_params.items():
@@ -455,17 +406,12 @@ y_pred_proba_optimized = optimized_model.predict_proba(X_test)[:, 1]
 optimized_metrics = calculate_metrics(
     y_test, y_pred_optimized, y_pred_proba_optimized, "LightGBM (Optimized)"
 )
-print(f"\n📊 Метрики оптимизированной модели:")
+print(f"\n Метрики оптимизированной модели:")
 for key, value in optimized_metrics.items():
     if key != 'Model':
         print(f"  {key}: {value:.4f}")
 
-# ============================================================================
-# ЗАДАЧА 48: УЛУЧШЕНИЕ ПРИЗНАКОВ (ОТБОР FEATURE IMPORTANCE)
-# ============================================================================
-print("\n" + "="*80)
-print("ЗАДАЧА 48: УЛУЧШЕНИЕ ПРИЗНАКОВ (ОТБОР FEATURE IMPORTANCE)")
-print("="*80)
+
 
 print("--- Отбор признаков по важности ---")
 
@@ -482,7 +428,7 @@ print(feature_importance.head(20).to_string(index=False))
 importance_threshold = feature_importance['importance'].quantile(0.2)
 selected_features = feature_importance[feature_importance['importance'] >= importance_threshold]['feature'].tolist()
 
-print(f"\n✅ Отобрано {len(selected_features)} признаков из {len(X_train.columns)}")
+print(f"\n Отобрано {len(selected_features)} признаков из {len(X_train.columns)}")
 print(f"Порог важности: {importance_threshold:.6f}")
 
 # Переобучаем модель на отобранных признаках
@@ -497,7 +443,7 @@ y_pred_proba_selected = optimized_model_selected.predict_proba(X_test_selected)[
 selected_metrics = calculate_metrics(
     y_test, y_pred_selected, y_pred_proba_selected, "LightGBM (Optimized + Feature Selection)"
 )
-print(f"\n📊 Метрики после отбора признаков:")
+print(f"\n Метрики после отбора признаков:")
 for key, value in selected_metrics.items():
     if key != 'Model':
         print(f"  {key}: {value:.4f}")
@@ -515,12 +461,7 @@ plt.tight_layout()
 plt.savefig('model/feature_importance.png', dpi=300, bbox_inches='tight')
 plt.close()
 
-# ============================================================================
-# ЗАДАЧА 49: CROSS-VALIDATION
-# ============================================================================
-print("\n" + "="*80)
-print("ЗАДАЧА 49: CROSS-VALIDATION")
-print("="*80)
+
 
 print("--- Cross-Validation оценка ---")
 
@@ -541,7 +482,7 @@ cv_scores_precision = cross_val_score(
     cv=cv, scoring='precision', n_jobs=-1
 )
 
-print(f"\n📊 Cross-Validation результаты (5-fold):")
+print(f"\n Cross-Validation результаты (5-fold):")
 print(f"  F2-score: {cv_scores_f2.mean():.4f} (+/- {cv_scores_f2.std() * 2:.4f})")
 print(f"  Recall:   {cv_scores_recall.mean():.4f} (+/- {cv_scores_recall.std() * 2:.4f})")
 print(f"  Precision: {cv_scores_precision.mean():.4f} (+/- {cv_scores_precision.std() * 2:.4f})")
@@ -565,12 +506,7 @@ plt.tight_layout()
 plt.savefig('model/cv_results.png', dpi=300, bbox_inches='tight')
 plt.close()
 
-# ============================================================================
-# ЗАДАЧА 50: ОПТИМИЗАЦИЯ ПОРОГА КЛАССИФИКАЦИИ
-# ============================================================================
-print("\n" + "="*80)
-print("ЗАДАЧА 50: ОПТИМИЗАЦИЯ ПОРОГА КЛАССИФИКАЦИИ")
-print("="*80)
+
 
 print("--- Оптимизация порога классификации ---")
 
@@ -595,7 +531,7 @@ best_threshold_idx = np.argmax(f2_scores)
 best_threshold = thresholds[best_threshold_idx]
 best_f2_thresh = f2_scores[best_threshold_idx]
 
-print(f"\n✅ Оптимальный порог: {best_threshold:.3f}")
+print(f"\n Оптимальный порог: {best_threshold:.3f}")
 print(f"   F2-score при этом пороге: {best_f2_thresh:.4f}")
 
 # Применяем оптимальный порог
@@ -605,7 +541,7 @@ optimal_metrics = calculate_metrics(
     f"LightGBM (Optimized + Feature Selection + Optimal Threshold={best_threshold:.3f})"
 )
 
-print(f"\n📊 Метрики с оптимальным порогом:")
+print(f"\n Метрики с оптимальным порогом:")
 for key, value in optimal_metrics.items():
     if key != 'Model':
         print(f"  {key}: {value:.4f}")
@@ -630,15 +566,10 @@ plt.close()
 final_model = optimized_model_selected
 final_threshold = best_threshold
 
-# ============================================================================
-# ЗАДАЧА 51: ИТОГОВЫЕ МЕТРИКИ
-# ============================================================================
-print("\n" + "="*80)
-print("ЗАДАЧА 51: ИТОГОВЫЕ МЕТРИКИ")
-print("="*80)
+
 
 final_metrics = optimal_metrics
-print("📊 ИТОГОВЫЕ МЕТРИКИ ФИНАЛЬНОЙ МОДЕЛИ")
+print(" ИТОГОВЫЕ МЕТРИКИ ФИНАЛЬНОЙ МОДЕЛИ")
 print("=" * 80)
 for key, value in final_metrics.items():
     if key != 'Model':
@@ -671,17 +602,12 @@ plt.tight_layout()
 plt.savefig('model/final_model_metrics.png', dpi=300, bbox_inches='tight')
 plt.close()
 
-print("\n✅ Итоговые метрики готовы!")
+print("\n Итоговые метрики готовы!")
 
-# ============================================================================
-# ЗАДАЧИ 52-56: SHAP АНАЛИЗ
-# ============================================================================
-print("\n" + "="*80)
-print("ЗАДАЧИ 52-56: SHAP АНАЛИЗ")
-print("="*80)
+
 
 print("--- SHAP Analysis ---")
-print("✅ SHAP установлен и готов к использованию")
+print(" SHAP установлен и готов к использованию")
 
 # Инициализируем SHAP explainer
 # Для LightGBM используем TreeExplainer (быстрее и точнее)
@@ -695,9 +621,9 @@ if isinstance(shap_values, list):
 else:
     shap_values_fraud = shap_values
 
-print(f"✅ SHAP значения вычислены для {len(X_test_selected)} тестовых образцов")
+print(f" SHAP значения вычислены для {len(X_test_selected)} тестовых образцов")
 
-# Задача 53: SHAP summary plot
+
 print("\n--- Создание SHAP Summary Plot ---")
 plt.figure(figsize=(12, 8))
 shap.summary_plot(shap_values_fraud, X_test_selected, 
@@ -707,9 +633,9 @@ plt.title('SHAP Summary Plot (Top 20 Features)', fontsize=14, fontweight='bold',
 plt.tight_layout()
 plt.savefig('model/shap_summary_plot.png', dpi=300, bbox_inches='tight')
 plt.close()
-print("✅ SHAP Summary Plot сохранен!")
+print(" SHAP Summary Plot сохранен!")
 
-# Задача 54: SHAP bar importance
+
 print("\n--- Создание SHAP Bar Plot ---")
 plt.figure(figsize=(10, 8))
 # Создаем Explanation объект для правильного отображения
@@ -724,9 +650,9 @@ plt.title('SHAP Feature Importance (Bar Plot)', fontsize=14, fontweight='bold', 
 plt.tight_layout()
 plt.savefig('model/shap_bar_plot.png', dpi=300, bbox_inches='tight')
 plt.close()
-print("✅ SHAP Bar Plot сохранен!")
+print(" SHAP Bar Plot сохранен!")
 
-# Задача 55: Пример объяснения конкретной транзакции
+
 print("\n--- Пример объяснения конкретной транзакции ---")
 
 # Находим пример мошеннической транзакции (если есть)
@@ -759,13 +685,13 @@ if len(fraud_indices) > 0:
     plt.savefig('model/shap_waterfall_example.png', dpi=300, bbox_inches='tight')
     plt.close()
     
-    print("\n✅ Пример объяснения создан!")
+    print("\n Пример объяснения создан!")
 else:
-    print("⚠️ В тестовой выборке нет мошеннических транзакций для примера")
+    print(" В тестовой выборке нет мошеннических транзакций для примера")
     
     # Берем транзакцию с высокой вероятностью мошенничества
     high_prob_idx = np.argmax(y_pred_proba_selected)
-    print(f"\n📋 Пример транзакции с высокой вероятностью мошенничества:")
+    print(f"\n Пример транзакции с высокой вероятностью мошенничества:")
     print(f"   Индекс: {high_prob_idx}")
     print(f"   Предсказанная вероятность: {y_pred_proba_selected[high_prob_idx]:.4f}")
     
@@ -786,19 +712,13 @@ else:
     plt.savefig('model/shap_waterfall_example.png', dpi=300, bbox_inches='tight')
     plt.close()
 
-print("\n✅ Все SHAP графики сохранены:")
+print("\n Все SHAP графики сохранены:")
 print("  - shap_summary_plot.png")
 print("  - shap_bar_plot.png")
 print("  - shap_waterfall_example.png")
 
-# ============================================================================
-# ЗАДАЧИ 57-58: СОХРАНЕНИЕ МОДЕЛИ И ДОКУМЕНТАЦИЯ
-# ============================================================================
-print("\n" + "="*80)
-print("ЗАДАЧИ 57-58: СОХРАНЕНИЕ МОДЕЛИ И ДОКУМЕНТАЦИЯ")
-print("="*80)
 
-# Задача 57: Сохранить модель в model.pkl
+
 print("\n--- Сохранение модели ---")
 
 # Сохраняем модель, список признаков и порог
@@ -812,19 +732,19 @@ model_package = {
 }
 
 joblib.dump(model_package, 'model/model.pkl')
-print("✅ Модель сохранена в model/model.pkl")
+print(" Модель сохранена в model/model.pkl")
 
 # Также сохраняем отдельно для удобства
 joblib.dump(final_model, 'model/final_model.pkl')
 joblib.dump(selected_features, 'model/selected_features.pkl')
 joblib.dump(final_threshold, 'model/threshold.pkl')
 
-print("✅ Дополнительные файлы сохранены:")
+print(" Дополнительные файлы сохранены:")
 print("  - final_model.pkl")
 print("  - selected_features.pkl")
 print("  - threshold.pkl")
 
-# Задача 58: Документировать вход/выход модели
+
 print("\n--- Создание документации ---")
 
 model_doc = f"""# 📋 Документация модели Fraud Detection
@@ -902,23 +822,7 @@ for i, (prob, pred) in enumerate(zip(probabilities, predictions)):
 with open('model/MODEL_DOCUMENTATION.md', 'w', encoding='utf-8') as f:
     f.write(model_doc)
 
-print("✅ Документация сохранена в model/MODEL_DOCUMENTATION.md")
+print(" Документация сохранена в model/MODEL_DOCUMENTATION.md")
 
-# ============================================================================
-# ИТОГИ
-# ============================================================================
-print("\n" + "="*80)
-print("✅ ВСЕ ЗАДАЧИ ВЫПОЛНЕНЫ!")
-print("="*80)
-print("\nВыполненные задачи:")
-print("  ✅ Baseline (37-40): Train/test split, Logistic Regression, метрики, confusion matrix")
-print("  ✅ Model Development (41-46): Обучены и сравнены RandomForest, XGBoost, LightGBM, CatBoost")
-print("  ✅ Optimization (47-51): Оптимизация гиперпараметров, feature selection, CV, threshold optimization")
-print("  ✅ Interpretability (52-56): SHAP анализ, графики важности признаков, примеры объяснений")
-print("  ✅ Model Packaging (57-59): Модель сохранена, документация создана")
-print("\n🏆 Финальная модель: LightGBM с оптимизированными гиперпараметрами и отобранными признаками")
-print(f"📊 F2-score: {final_metrics['F2-score']:.4f}")
-print(f"📊 Recall: {final_metrics['Recall']:.4f}")
-print(f"📊 Precision: {final_metrics['Precision']:.4f}")
-print("\n✅ Модель готова к использованию в API!")
+
 

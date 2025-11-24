@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, validator
-from typing import Optional
+from typing import Optional, List, Dict
 from datetime import datetime
 
 
@@ -8,7 +8,6 @@ class Transaction(BaseModel):
     Модель транзакции для детекции мошенничества.
     Основана на структуре данных из transactions.csv и behavior_patterns.csv
     """
-    # Основные поля транзакции (обязательные)
     amount: float = Field(
         ...,
         description="Сумма транзакции",
@@ -22,7 +21,6 @@ class Transaction(BaseModel):
         example=2937833270
     )
     
-    # Поля транзакции (опциональные, но рекомендуемые)
     transaction_id: Optional[str] = Field(
         None,
         description="Уникальный идентификатор транзакции (docno)",
@@ -48,7 +46,6 @@ class Transaction(BaseModel):
         example="8406e407421ec28bd5f445793ef64fd1"
     )
     
-    # Поведенческие данные (опциональные, для улучшения точности)
     device_type: Optional[str] = Field(
         None,
         description="Тип устройства (mobile, desktop, tablet)",
@@ -65,7 +62,6 @@ class Transaction(BaseModel):
         example="iOS/18.5"
     )
     
-    # Поведенческие метрики (опциональные)
     unique_os_versions_30d: Optional[int] = Field(
         None,
         description="Количество разных версий ОС за последние 30 дней",
@@ -108,7 +104,7 @@ class Transaction(BaseModel):
         """Валидация суммы транзакции."""
         if v <= 0:
             raise ValueError('Amount must be greater than 0')
-        if v > 100000000:  # Максимальная сумма (можно настроить)
+        if v > 100000000:
             raise ValueError('Amount is too large')
         return v
     
@@ -124,7 +120,6 @@ class Transaction(BaseModel):
         """Валидация формата даты (опционально)."""
         if v is None:
             return v
-        # Можно добавить более строгую валидацию формата даты
         return v
     
     @validator('logins_last_7_days', 'logins_last_30_days')
@@ -137,8 +132,8 @@ class Transaction(BaseModel):
         return v
     
     class Config:
-        populate_by_name = True  # Позволяет использовать как user_id, так и client_id
-        schema_extra = {
+        populate_by_name = True
+        json_schema_extra = {
             "example": {
                 "amount": 1000.0,
                 "client_id": 2937833270,
@@ -170,7 +165,7 @@ class PredictionResponse(BaseModel):
     )
     is_fraud: bool = Field(
         ...,
-        description="Флаг мошенничества (True если вероятность > 0.5)",
+        description="Флаг мошенничества (True если вероятность >= threshold)",
         example=False
     )
     transaction_id: Optional[str] = Field(
@@ -188,3 +183,19 @@ class PredictionResponse(BaseModel):
         description="Уровень уверенности: 'high', 'medium', 'low'",
         example="high"
     )
+
+
+class FeatureImportance(BaseModel):
+    """Модель важности признака."""
+    feature_name: str = Field(..., description="Название признака")
+    shap_value: float = Field(..., description="SHAP значение (влияние на предсказание)")
+    impact: str = Field(..., description="Влияние: 'increases_fraud' или 'decreases_fraud'")
+
+
+class ExplainResponse(BaseModel):
+    """Модель ответа для объяснения предсказания."""
+    fraud_probability: float = Field(..., description="Вероятность мошенничества")
+    is_fraud: bool = Field(..., description="Флаг мошенничества")
+    base_value: float = Field(..., description="Базовое значение модели")
+    top_factors: List[FeatureImportance] = Field(..., description="Топ факторов влияния")
+    transaction_id: Optional[str] = Field(None, description="ID транзакции")

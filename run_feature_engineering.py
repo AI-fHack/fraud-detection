@@ -1,7 +1,4 @@
-"""
-Скрипт для выполнения задач 29-36 (Feature Engineering - финальная обработка)
-Выполняет все задачи из notebooks/02_feature_engineering.ipynb
-"""
+
 import sys
 import io
 # Устанавливаем UTF-8 для вывода в Windows
@@ -24,38 +21,29 @@ import joblib
 
 warnings.filterwarnings('ignore')
 
-print("✅ Все библиотеки загружены успешно!")
+print("Все библиотеки загружены успешно!")
 
-# ============================================================================
-# ЗАГРУЗКА ДАННЫХ
-# ============================================================================
+
 INPUT_PATH = 'data/processed/transactions_with_features.csv'
 OUTPUT_PATH = 'data/processed/transactions_with_features_final.csv'
 PIPELINE_PATH = 'model/preprocessing_pipeline.pkl'
 
-print("\n" + "="*80)
-print("ЗАГРУЗКА ДАННЫХ ИЗ ПРЕДЫДУЩЕГО ЭТАПА")
-print("="*80)
+
 
 df = pd.read_csv(INPUT_PATH, low_memory=False)
-print(f"✅ Данные загружены: {df.shape}")
+print(f"Данные загружены: {df.shape}")
 print(f"Колонок: {len(df.columns)}")
 print(f"Строк: {len(df)}")
 
 # Проверка целевой переменной
 if 'target' in df.columns:
-    print(f"\n📊 Распределение классов:")
+    print(f"\nРаспределение классов:")
     print(df['target'].value_counts())
     print(f"Дисбаланс: {df['target'].value_counts()[0] / df['target'].value_counts()[1]:.2f}:1")
 else:
-    raise ValueError("❌ Колонка 'target' не найдена!")
+    raise ValueError("Колонка 'target' не найдена!")
 
-# ============================================================================
-# ЗАДАЧА 29: ОБРАБОТКА КАТЕГОРИАЛЬНЫХ ПРИЗНАКОВ
-# ============================================================================
-print("\n" + "="*80)
-print("ЗАДАЧА 29: ОБРАБОТКА КАТЕГОРИАЛЬНЫХ ПРИЗНАКОВ")
-print("="*80)
+
 
 # Находим категориальные признаки
 categorical_cols = df.select_dtypes(include=['object']).columns.tolist()
@@ -84,31 +72,26 @@ for col in categorical_cols:
         freq_map = df[col].value_counts() / len(df)
         df[f'{col}_freq_encoding'] = df[col].map(freq_map).fillna(0)
         frequency_encodings[col] = freq_map
-        print(f"  ✅ Создан frequency encoding: {col}_freq_encoding")
+        print(f"  Создан frequency encoding: {col}_freq_encoding")
         df.drop(columns=[col], inplace=True)
     elif unique_count > 2:
         # Label Encoding
         le = LabelEncoder()
         df[f'{col}_encoded'] = le.fit_transform(df[col].astype(str).fillna('UNKNOWN'))
         label_encoders[col] = le
-        print(f"  ✅ Создан label encoding: {col}_encoded")
+        print(f"  Создан label encoding: {col}_encoded")
         df.drop(columns=[col], inplace=True)
     else:
         # Бинарные признаки
         df[col] = df[col].astype(str).fillna('UNKNOWN')
-        print(f"  ✅ Бинарный признак оставлен как есть")
+        print(f"  Бинарный признак оставлен как есть")
 
-print(f"\n✅ Обработка категориальных признаков завершена!")
+print(f"\nОбработка категориальных признаков завершена!")
 print(f"Создано label encoders: {len(label_encoders)}")
 print(f"Создано frequency encodings: {len(frequency_encodings)}")
 print(f"Текущий размер данных: {df.shape}")
 
-# ============================================================================
-# ЗАДАЧА 30: ПРОВЕРКА ВЫБРОСОВ
-# ============================================================================
-print("\n" + "="*80)
-print("ЗАДАЧА 30: ПРОВЕРКА ВЫБРОСОВ")
-print("="*80)
+
 
 numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
 if 'target' in numeric_cols:
@@ -134,23 +117,18 @@ for col in numeric_cols[:20]:  # Первые 20 для скорости
                 'percentage': (outlier_count / len(df)) * 100
             }
 
-print(f"\n📊 Обнаружено выбросов в {len(outliers_info)} колонках")
+print(f"\n Обнаружено выбросов в {len(outliers_info)} колонках")
 if len(outliers_info) > 0:
     sorted_outliers = sorted(outliers_info.items(), key=lambda x: x[1]['count'], reverse=True)[:5]
     print("Топ-5 колонок с выбросами:")
     for col, info in sorted_outliers:
         print(f"  {col}: {info['count']} выбросов ({info['percentage']:.2f}%)")
 
-print("\n⚠️ ВАЖНО: Для fraud detection выбросы могут быть признаками мошенничества")
+print("\nВАЖНО: Для fraud detection выбросы могут быть признаками мошенничества")
 print("Выбросы НЕ удаляются, но информация сохранена для анализа")
-print("\n✅ Проверка выбросов завершена!")
+print("\nПроверка выбросов завершена")
 
-# ============================================================================
-# ЗАДАЧА 31: НОРМИРОВАНИЕ/МАСШТАБИРОВАНИЕ
-# ============================================================================
-print("\n" + "="*80)
-print("ЗАДАЧА 31: НОРМИРОВАНИЕ/МАСШТАБИРОВАНИЕ ПРИЗНАКОВ")
-print("="*80)
+
 
 numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
 exclude_cols = ['target', 'user_id']
@@ -173,14 +151,9 @@ print(f"\nНайдено {len(cols_to_scale)} признаков для масш
 scaler = MinMaxScaler()
 df[cols_to_scale] = scaler.fit_transform(df[cols_to_scale])
 
-print(f"✅ Масштабировано {len(cols_to_scale)} признаков с помощью MinMaxScaler")
+print(f" Масштабировано {len(cols_to_scale)} признаков с помощью MinMaxScaler")
 
-# ============================================================================
-# ЗАДАЧА 32: СОХРАНЕНИЕ ФИНАЛЬНОГО ДАТАСЕТА
-# ============================================================================
-print("\n" + "="*80)
-print("ЗАДАЧА 32: СОХРАНЕНИЕ ФИНАЛЬНОГО ДАТАСЕТА")
-print("="*80)
+
 
 df.fillna(0, inplace=True)
 
@@ -190,27 +163,23 @@ if 'user_id' in df.columns:
 else:
     df_for_model = df.copy()
 
-print(f"\n📊 Финальная структура данных:")
+print(f"\n Финальная структура данных:")
 print(f"  Размер: {df_for_model.shape}")
 print(f"  Колонок: {len(df_for_model.columns)}")
 print(f"  Строк: {len(df_for_model)}")
 
 if 'target' not in df_for_model.columns:
-    raise ValueError("❌ Колонка 'target' отсутствует!")
+    raise ValueError(" Колонка 'target' отсутствует!")
 
 output_dir = os.path.dirname(OUTPUT_PATH)
 if output_dir and not os.path.exists(output_dir):
     os.makedirs(output_dir, exist_ok=True)
 
 df_for_model.to_csv(OUTPUT_PATH, index=False)
-print(f"\n✅ Финальный датасет сохранен: {OUTPUT_PATH}")
+print(f"\n Финальный датасет сохранен: {OUTPUT_PATH}")
 
-# ============================================================================
-# ЗАДАЧА 34: PREPROCESSING PIPELINE
-# ============================================================================
-print("\n" + "="*80)
-print("ЗАДАЧА 34: СОЗДАНИЕ PREPROCESSING PIPELINE")
-print("="*80)
+
+
 
 class FraudDetectionPreprocessor:
     """Preprocessing pipeline для fraud detection модели."""
@@ -270,14 +239,9 @@ preprocessor = FraudDetectionPreprocessor(
 
 os.makedirs(os.path.dirname(PIPELINE_PATH), exist_ok=True)
 joblib.dump(preprocessor, PIPELINE_PATH)
-print(f"\n✅ Preprocessing pipeline сохранен: {PIPELINE_PATH}")
+print(f"\n Preprocessing pipeline сохранен: {PIPELINE_PATH}")
 
-# ============================================================================
-# ЗАДАЧА 35: ФУНКЦИЯ ВАЛИДАЦИИ
-# ============================================================================
-print("\n" + "="*80)
-print("ЗАДАЧА 35: ФУНКЦИЯ ВАЛИДАЦИИ ВХОДНЫХ ДАННЫХ")
-print("="*80)
+
 
 def validate_input_data(df, required_features=None, target_col='target'):
     """Валидация входных данных для fraud detection модели."""
@@ -384,18 +348,14 @@ def validate_input_data(df, required_features=None, target_col='target'):
     }
 ''')
 
-print(f"\n✅ Функция валидации сохранена: {validation_file_path}")
+print(f"\n Функция валидации сохранена: {validation_file_path}")
 
-# ============================================================================
-# ЗАДАЧА 36: ФИНАЛЬНЫЙ НАБОР ПРИЗНАКОВ
-# ============================================================================
-print("\n" + "="*80)
-print("ЗАДАЧА 36: ФИНАЛЬНЫЙ НАБОР ПРИЗНАКОВ")
-print("="*80)
+
+
 
 final_features = [col for col in df_for_model.columns if col != 'target']
 
-print(f"\n📊 ФИНАЛЬНЫЙ НАБОР ПРИЗНАКОВ:")
+print(f"\n ФИНАЛЬНЫЙ НАБОР ПРИЗНАКОВ:")
 print(f"  Всего признаков: {len(final_features)}")
 print(f"  Размер данных: {df_for_model.shape}")
 
@@ -409,24 +369,9 @@ with open(features_list_path, 'w', encoding='utf-8') as f:
         f.write(f"  - {feat}\n")
 
 joblib.dump(final_features, 'model/final_features.pkl')
-print(f"\n✅ Список признаков сохранен: {features_list_path}")
-print(f"✅ Список признаков сохранен (pickle): model/final_features.pkl")
+print(f"\n Список признаков сохранен: {features_list_path}")
+print(f" Список признаков сохранен (pickle): model/final_features.pkl")
 
-# ============================================================================
-# ИТОГИ
-# ============================================================================
-print("\n" + "="*80)
-print("✅ ВСЕ ЗАДАЧИ 29-36 ВЫПОЛНЕНЫ!")
-print("="*80)
-print(f"\n📊 ИТОГОВАЯ СВОДКА:")
-print(f"  ✅ Задача 29: Категориальные признаки обработаны")
-print(f"  ✅ Задача 30: Выбросы проверены")
-print(f"  ✅ Задача 31: Признаки нормированы/масштабированы")
-print(f"  ✅ Задача 32: Финальный датасет сохранен: {OUTPUT_PATH}")
-print(f"  ✅ Задача 33: Notebook создан: notebooks/02_feature_engineering.ipynb")
-print(f"  ✅ Задача 34: Preprocessing pipeline создан: {PIPELINE_PATH}")
-print(f"  ✅ Задача 35: Функция валидации создана: {validation_file_path}")
-print(f"  ✅ Задача 36: Финальный набор признаков предоставлен: {len(final_features)} признаков")
-print(f"\n🎯 Данные готовы для обучения ML модели!")
-print(f"   Используйте файл: {OUTPUT_PATH}")
+
+
 

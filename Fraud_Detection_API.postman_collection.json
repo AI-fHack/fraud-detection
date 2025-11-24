@@ -1,0 +1,176 @@
+{
+	"info": {
+		"name": "Fraud Detection API",
+		"description": "API для детекции мошеннических транзакций",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8000/health",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["health"]
+				}
+			}
+		},
+		{
+			"name": "Model Status",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8000/model/status",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["model", "status"]
+				}
+			}
+		},
+		{
+			"name": "Predict - Valid Transaction",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"amount\": 1000.0,\n  \"client_id\": 2937833270,\n  \"transaction_datetime\": \"2025-01-05 16:32:02.000\",\n  \"device_type\": \"mobile\",\n  \"phone_model\": \"iPhone16\",\n  \"os_version\": \"iOS/18.5\",\n  \"logins_last_7_days\": 2,\n  \"logins_last_30_days\": 2\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/predict",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["predict"]
+				}
+			}
+		},
+		{
+			"name": "Predict - High Amount",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"amount\": 50000.0,\n  \"client_id\": 2937833270,\n  \"transaction_datetime\": \"2025-01-05 03:00:00.000\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/predict",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["predict"]
+				}
+			}
+		},
+		{
+			"name": "Predict - Missing Fields",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"amount\": 1000.0\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/predict",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["predict"]
+				}
+			}
+		},
+		{
+			"name": "Predict - Invalid Amount",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"amount\": -100.0,\n  \"client_id\": 12345\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/predict",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["predict"]
+				}
+			}
+		},
+		{
+			"name": "Explain - Valid Transaction",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"amount\": 1000.0,\n  \"client_id\": 2937833270,\n  \"transaction_datetime\": \"2025-01-05 16:32:02.000\",\n  \"device_type\": \"mobile\",\n  \"phone_model\": \"iPhone16\",\n  \"os_version\": \"iOS/18.5\",\n  \"logins_last_7_days\": 2,\n  \"logins_last_30_days\": 2\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/explain",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["explain"]
+				}
+			}
+		},
+		{
+			"name": "Explain - Fraud Case",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"amount\": 50000.0,\n  \"client_id\": 2937833270,\n  \"transaction_datetime\": \"2025-01-05 03:00:00.000\",\n  \"unique_phone_models_30d\": 5,\n  \"unique_os_versions_30d\": 3\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/explain",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["explain"]
+				}
+			}
+		}
+	]
+}
+

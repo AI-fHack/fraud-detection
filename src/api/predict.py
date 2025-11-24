@@ -1,30 +1,22 @@
 import joblib
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any
 
-# Global variable to store the model
+_model_package: Optional[Dict[str, Any]] = None
 _model: Optional[object] = None
+_selected_features: Optional[list] = None
+_threshold: Optional[float] = None
 
 
-def get_model():
-    """
-    Load the trained model from file safely.
+def get_model_package():
+    """Load the trained model package from file."""
+    global _model_package
     
-    Returns:
-        Model object or None if model file doesn't exist
-        
-    Raises:
-        FileNotFoundError: If model file doesn't exist
-        Exception: If model loading fails
-    """
-    global _model
+    if _model_package is not None:
+        return _model_package
     
-    if _model is not None:
-        return _model
-    
-    # Get the project root directory (parent of src)
     project_root = Path(__file__).parent.parent.parent
-    model_path = project_root / "src" / "ml" / "model.pkl"
+    model_path = project_root / "model" / "model.pkl"
     
     if not model_path.exists():
         raise FileNotFoundError(
@@ -33,20 +25,67 @@ def get_model():
         )
     
     try:
-        _model = joblib.load(model_path)
-        return _model
+        _model_package = joblib.load(model_path)
+        return _model_package
     except Exception as e:
         raise Exception(f"Failed to load model: {str(e)}")
 
 
+def get_model():
+    """Get the trained model."""
+    global _model
+    
+    if _model is not None:
+        return _model
+    
+    package = get_model_package()
+    
+    if isinstance(package, dict):
+        _model = package.get('model', package)
+    else:
+        _model = package
+    
+    return _model
+
+
+def get_selected_features():
+    """Get the list of selected features."""
+    global _selected_features
+    
+    if _selected_features is not None:
+        return _selected_features
+    
+    package = get_model_package()
+    
+    if isinstance(package, dict):
+        _selected_features = package.get('selected_features', [])
+    else:
+        _selected_features = []
+    
+    return _selected_features
+
+
+def get_threshold():
+    """Get the optimal threshold."""
+    global _threshold
+    
+    if _threshold is not None:
+        return _threshold
+    
+    package = get_model_package()
+    
+    if isinstance(package, dict):
+        _threshold = package.get('threshold', 0.5)
+    else:
+        _threshold = 0.5
+    
+    return _threshold
+
+
 def is_model_loaded() -> bool:
     """Check if model is loaded."""
-    global _model
-    return _model is not None
-
-
-# Try to load model at module import, but don't fail if it doesn't exist
-try:
-    model = get_model()
-except (FileNotFoundError, Exception):
-    model = None
+    try:
+        get_model()
+        return True
+    except (FileNotFoundError, Exception):
+        return False
