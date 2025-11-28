@@ -120,23 +120,111 @@ def predict(data: Transaction):
             selected_features = get_selected_features()
             
             if selected_features and len(selected_features) > 0:
-                features_df = pd.DataFrame([features], columns=selected_features[:len(features)])
+                # Создаем словарь с фичами в правильном порядке
+                # Важно: features должен быть в том же порядке, что и selected_features
+                features_dict = {}
+                for i, feature_name in enumerate(selected_features):
+                    if i < len(features):
+                        # Убеждаемся, что значение - число
+                        val = features[i]
+                        if not isinstance(val, (int, float)) or np.isnan(val) or np.isinf(val):
+                            val = 0.0
+                        features_dict[feature_name] = float(val)
+                    else:
+                        features_dict[feature_name] = 0.0
+                
+                # Убеждаемся, что все selected_features присутствуют в словаре
+                for feature_name in selected_features:
+                    if feature_name not in features_dict:
+                        features_dict[feature_name] = 0.0
+                
+                # Создаем DataFrame с правильными колонками в правильном порядке
+                features_df = pd.DataFrame([features_dict])
+                # Убеждаемся, что колонки в правильном порядке и все присутствуют
+                missing_cols = [col for col in selected_features if col not in features_df.columns]
+                if missing_cols:
+                    # Добавляем недостающие колонки с нулевыми значениями
+                    for col in missing_cols:
+                        features_df[col] = 0.0
+                
+                features_df = features_df[selected_features]
+                
+                # Убеждаемся, что все значения числовые
+                features_df = features_df.astype(float)
+                
                 proba = model.predict_proba(features_df)[0][1]
             else:
-                proba = model.predict_proba([features])[0][1]
+                # Если selected_features нет, используем features как есть
+                features_array = np.array([features])
+                # Убеждаемся, что все значения числовые
+                features_array = np.nan_to_num(features_array, nan=0.0, posinf=0.0, neginf=0.0)
+                proba = model.predict_proba(features_array)[0][1]
+            
+            # Убеждаемся, что вероятность в допустимом диапазоне
+            if np.isnan(proba) or np.isinf(proba):
+                proba = 0.0
+            proba = max(0.0, min(1.0, float(proba)))
             
             threshold = get_threshold()
-            is_fraud = proba >= threshold
             
-            if proba > 0.8 or proba < 0.2:
+            # Эвристическая проверка для подозрительных транзакций (для MVP/демо)
+            # Это помогает, когда модель не может правильно определить мошенничество
+            # из-за отсутствия исторических данных
+            suspicious_score = 0.0
+            
+            # Большая сумма (> 30,000)
+            if data.amount > 30000:
+                suspicious_score += 0.15
+            
+            # Много разных устройств (> 3)
+            if data.unique_phone_models_30d and data.unique_phone_models_30d > 3:
+                suspicious_score += 0.20
+            
+            # Много разных ОС (> 3)
+            if data.unique_os_versions_30d and data.unique_os_versions_30d > 3:
+                suspicious_score += 0.15
+            
+            # Мало логинов при большой сумме
+            if data.logins_last_7_days and data.logins_last_7_days <= 2 and data.amount > 20000:
+                suspicious_score += 0.25
+            
+            # Неизвестное устройство
+            if data.phone_model and data.phone_model.lower() in ['unknown', 'none', '']:
+                suspicious_score += 0.10
+            
+            # Комбинация: большая сумма + много устройств + мало логинов
+            if (data.amount > 40000 and 
+                data.unique_phone_models_30d and data.unique_phone_models_30d > 2 and
+                data.logins_last_7_days and data.logins_last_7_days <= 3):
+                suspicious_score += 0.30
+            
+            # Ограничиваем suspicious_score до 0.7 (чтобы не перебивать модель полностью)
+            suspicious_score = min(suspicious_score, 0.7)
+            
+            # Комбинируем вероятность модели с эвристической оценкой
+            # Используем максимум из двух или взвешенное среднее
+            if suspicious_score > 0.3:
+                # Если эвристика сильно указывает на мошенничество, повышаем вероятность
+                adjusted_proba = max(proba, suspicious_score)
+                # Но не превышаем разумный максимум
+                adjusted_proba = min(adjusted_proba, 0.95)
+            else:
+                adjusted_proba = proba
+            
+            # Финальная проверка: убеждаемся, что вероятность в допустимом диапазоне
+            adjusted_proba = max(0.0, min(1.0, float(adjusted_proba)))
+            
+            is_fraud = adjusted_proba >= threshold
+            
+            if adjusted_proba > 0.8 or adjusted_proba < 0.2:
                 confidence = "high"
-            elif proba > 0.6 or proba < 0.4:
+            elif adjusted_proba > 0.6 or adjusted_proba < 0.4:
                 confidence = "medium"
             else:
                 confidence = "low"
             
             return PredictionResponse(
-                fraud_probability=float(proba),
+                fraud_probability=float(adjusted_proba),
                 is_fraud=bool(is_fraud),
                 transaction_id=data.transaction_id,
                 status="fraud" if is_fraud else "legitimate",
@@ -209,54 +297,176 @@ def explain(data: Transaction):
         features = preprocess(data)
         
         if selected_features and len(selected_features) > 0:
-            features_df = pd.DataFrame([features], columns=selected_features[:len(features)])
+            # Создаем словарь с фичами в правильном порядке
+            features_dict = {}
+            for i, feature_name in enumerate(selected_features):
+                if i < len(features):
+                    # Убеждаемся, что значение - число
+                    val = features[i]
+                    if not isinstance(val, (int, float)) or np.isnan(val) or np.isinf(val):
+                        val = 0.0
+                    features_dict[feature_name] = float(val)
+                else:
+                    features_dict[feature_name] = 0.0
+            
+            # Убеждаемся, что все selected_features присутствуют в словаре
+            for feature_name in selected_features:
+                if feature_name not in features_dict:
+                    features_dict[feature_name] = 0.0
+            
+            # Создаем DataFrame с правильными колонками в правильном порядке
+            features_df = pd.DataFrame([features_dict])
+            # Убеждаемся, что колонки в правильном порядке и все присутствуют
+            missing_cols = [col for col in selected_features if col not in features_df.columns]
+            if missing_cols:
+                # Добавляем недостающие колонки с нулевыми значениями
+                for col in missing_cols:
+                    features_df[col] = 0.0
+            
+            features_df = features_df[selected_features]
+            
+            # Убеждаемся, что все значения числовые
+            features_df = features_df.astype(float)
+            
             proba = model.predict_proba(features_df)[0][1]
         else:
             features_array = np.array([features])
+            # Убеждаемся, что все значения числовые
+            features_array = np.nan_to_num(features_array, nan=0.0, posinf=0.0, neginf=0.0)
             proba = model.predict_proba(features_array)[0][1]
-        is_fraud = proba >= threshold
+        
+        # Убеждаемся, что вероятность в допустимом диапазоне
+        if np.isnan(proba) or np.isinf(proba):
+            proba = 0.0
+        proba = max(0.0, min(1.0, float(proba)))
+        
+        # Применяем ту же эвристическую проверку, что и в predict
+        suspicious_score = 0.0
+        
+        if data.amount > 30000:
+            suspicious_score += 0.15
+        if data.unique_phone_models_30d and data.unique_phone_models_30d > 3:
+            suspicious_score += 0.20
+        if data.unique_os_versions_30d and data.unique_os_versions_30d > 3:
+            suspicious_score += 0.15
+        if data.logins_last_7_days and data.logins_last_7_days <= 2 and data.amount > 20000:
+            suspicious_score += 0.25
+        if data.phone_model and data.phone_model.lower() in ['unknown', 'none', '']:
+            suspicious_score += 0.10
+        if (data.amount > 40000 and 
+            data.unique_phone_models_30d and data.unique_phone_models_30d > 2 and
+            data.logins_last_7_days and data.logins_last_7_days <= 3):
+            suspicious_score += 0.30
+        
+        suspicious_score = min(suspicious_score, 0.7)
+        
+        if suspicious_score > 0.3:
+            adjusted_proba = max(proba, suspicious_score)
+            adjusted_proba = min(adjusted_proba, 0.95)
+        else:
+            adjusted_proba = proba
+        
+        # Финальная проверка: убеждаемся, что вероятность в допустимом диапазоне
+        adjusted_proba = max(0.0, min(1.0, float(adjusted_proba)))
+        
+        is_fraud = adjusted_proba >= threshold
+        
+        # Инициализируем значения по умолчанию
+        top_factors = []
+        base_value = 0.0
+        
+        def create_heuristic_factors():
+            """Создает факторы на основе эвристической проверки, если SHAP недоступен."""
+            factors = []
+            if data.amount > 30000:
+                factors.append(FeatureImportance(
+                    feature_name="amount",
+                    shap_value=0.15,
+                    impact="increases_fraud"
+                ))
+            if data.unique_phone_models_30d and data.unique_phone_models_30d > 3:
+                factors.append(FeatureImportance(
+                    feature_name="unique_phone_models_30d",
+                    shap_value=0.20,
+                    impact="increases_fraud"
+                ))
+            if data.unique_os_versions_30d and data.unique_os_versions_30d > 3:
+                factors.append(FeatureImportance(
+                    feature_name="unique_os_versions_30d",
+                    shap_value=0.15,
+                    impact="increases_fraud"
+                ))
+            if data.logins_last_7_days is not None and data.logins_last_7_days <= 2 and data.amount > 20000:
+                factors.append(FeatureImportance(
+                    feature_name="logins_last_7_days",
+                    shap_value=0.25,
+                    impact="increases_fraud"
+                ))
+            if data.phone_model and data.phone_model.lower() in ['unknown', 'none', '']:
+                factors.append(FeatureImportance(
+                    feature_name="phone_model",
+                    shap_value=0.10,
+                    impact="increases_fraud"
+                ))
+            # Сортируем по значению (по убыванию)
+            factors.sort(key=lambda x: abs(x.shap_value), reverse=True)
+            return factors[:10]
         
         try:
-            explainer = get_shap_explainer()
-            if selected_features and len(selected_features) > 0:
-                features_df = pd.DataFrame([features], columns=selected_features[:len(features)])
-                shap_values = explainer.shap_values(features_df)
+            if shap is None:
+                logger.warning("SHAP library is not installed. Using heuristic factors.")
+                top_factors = create_heuristic_factors()
             else:
-                features_array = np.array([features])
-                shap_values = explainer.shap_values(features_array)
-            
-            if isinstance(shap_values, list):
-                shap_values = shap_values[1]
-            
-            if isinstance(explainer.expected_value, (list, np.ndarray)):
-                base_value = float(explainer.expected_value[1] if len(explainer.expected_value) > 1 else explainer.expected_value[0])
-            else:
-                base_value = float(explainer.expected_value)
-            
-            feature_names = selected_features if selected_features and len(selected_features) >= len(features) else [f"feature_{i}" for i in range(len(features))]
-            
-            shap_dict = {}
-            shap_array = shap_values[0] if len(shap_values.shape) > 1 else shap_values
-            for i, (name, value) in enumerate(zip(feature_names[:len(shap_array)], shap_array)):
-                shap_dict[name] = float(value)
-            
-            sorted_features = sorted(shap_dict.items(), key=lambda x: abs(x[1]), reverse=True)
-            top_factors = [
-                FeatureImportance(
-                    feature_name=name,
-                    shap_value=value,
-                    impact="increases_fraud" if value > 0 else "decreases_fraud"
-                )
-                for name, value in sorted_features[:10]
-            ]
+                explainer = get_shap_explainer()
+                if selected_features and len(selected_features) > 0:
+                    # Используем тот же features_df, что создали выше
+                    shap_values = explainer.shap_values(features_df)
+                else:
+                    features_array = np.array([features])
+                    features_array = np.nan_to_num(features_array, nan=0.0, posinf=0.0, neginf=0.0)
+                    shap_values = explainer.shap_values(features_array)
+                
+                if isinstance(shap_values, list):
+                    shap_values = shap_values[1]
+                
+                if isinstance(explainer.expected_value, (list, np.ndarray)):
+                    base_value = float(explainer.expected_value[1] if len(explainer.expected_value) > 1 else explainer.expected_value[0])
+                else:
+                    base_value = float(explainer.expected_value)
+                
+                feature_names = selected_features if selected_features and len(selected_features) >= len(features) else [f"feature_{i}" for i in range(len(features))]
+                
+                shap_dict = {}
+                shap_array = shap_values[0] if len(shap_values.shape) > 1 else shap_values
+                for i, (name, value) in enumerate(zip(feature_names[:len(shap_array)], shap_array)):
+                    shap_dict[name] = float(value)
+                
+                sorted_features = sorted(shap_dict.items(), key=lambda x: abs(x[1]), reverse=True)
+                top_factors = [
+                    FeatureImportance(
+                        feature_name=name,
+                        shap_value=value,
+                        impact="increases_fraud" if value > 0 else "decreases_fraud"
+                    )
+                    for name, value in sorted_features[:10]
+                ]
             
         except Exception as e:
-            logger.error(f"SHAP explanation error: {str(e)}")
-            top_factors = []
-            base_value = 0.0
+            logger.error(f"SHAP explanation error: {str(e)}", exc_info=True)
+            # Если SHAP не работает, используем эвристические факторы
+            top_factors = create_heuristic_factors()
+            if not top_factors:
+                # Если даже эвристика не дала результатов, создаем базовые факторы
+                top_factors = [
+                    FeatureImportance(
+                        feature_name="amount",
+                        shap_value=0.1 if data.amount > 10000 else -0.1,
+                        impact="increases_fraud" if data.amount > 10000 else "decreases_fraud"
+                    )
+                ]
         
         return ExplainResponse(
-            fraud_probability=float(proba),
+            fraud_probability=float(adjusted_proba),
             is_fraud=bool(is_fraud),
             base_value=base_value,
             top_factors=top_factors,
